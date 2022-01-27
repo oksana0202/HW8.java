@@ -30,13 +30,15 @@ public class AccuweatherModel implements WeatherModel {
 
     public static final OkHttpClient okHttpClient = new OkHttpClient();
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    private DataBaseRepository dataBaseRepository = new DataBaseRepository();
 
     @Override
     public String getWeather(String selectedCity, Period period) throws IOException {
         String weatherResponse = null;
-        switch(period){
+        HttpUrl httpUrl;
+        switch (period) {
             case ONE_DAY:
-                HttpUrl httpUrl = new HttpUrl.Builder()
+                httpUrl = new HttpUrl.Builder()
                         .scheme(PROTOCOL)
                         .host(BASE_HOST)
                         .addPathSegment(FORECASTS)
@@ -53,7 +55,27 @@ public class AccuweatherModel implements WeatherModel {
 
                 Response oneDayForecastsResponse = okHttpClient.newCall(request).execute();
                 weatherResponse = oneDayForecastsResponse.body().string();
-                return weatherResponse;
+                String getWeatherONE_DAY = "{\n" +
+                        "    \"Version\" : \"1\",\n" +
+                        "    \"Key\" : \"294021\",\n" +
+                        "    \"Type\" : \"City\",\n" +
+                        "    \"Rank\" : \"10\",\n" +
+                        "    \"LocalizedName\" : \"Moscow\",\n" +
+                        "    \"Country\" : \"Russia\",\n" +
+                        "    \"ID\" : \"RU\",\n" +
+                        "}";
+                break;
+            default:
+                throw new IllegalStateException("Unexpected value: " + period);
+
+                try {
+                    dataBaseRepository.saveWeatherToDatabase(new Weather(getWeatherONE_DAY));
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+                break;
+        }
+
 
             case FIVE_DAYS:
                 httpUrl = new HttpUrl.Builder()
@@ -66,31 +88,23 @@ public class AccuweatherModel implements WeatherModel {
                         .addPathSegment(detectCityKey(selectedCity, Period.ONE_DAY))
                         .addQueryParameter(API_KEY_QUERY_PARAM, API_KEY)
                         .build();
-                request = new Request.Builder()
+                Request request = new Request.Builder()
                         .url(httpUrl)
                         .build();
 
-                Response fiveDaysForecastsResponse = okHttpClient.newCall(request).execute();
-                weatherResponse = fiveDaysForecastsResponse.body().string();
+        Response fiveDaysForecastsResponse = okHttpClient.newCall(request).execute();
+        weatherResponse = fiveDaysForecastsResponse.body().string();
 
-                System.out.println(weatherResponse);
-                String token = String.valueOf(weatherResponse.split("[|\"}]", Integer.parseInt(" ")));
-                System.out.println(token);
+        System.out.println(weatherResponse);
+        String token = String.valueOf(weatherResponse.split("[|\"}]", Integer.parseInt(" ")));
+        System.out.println(token);
 
-                String getWeatherONE_DAY = "{\n" +
-                        "    \"Version\" : \"1\",\n" +
-                        "    \"Key\" : \"294021\",\n" +
-                        "    \"Type\" : \"City\",\n"  +
-                        "    \"Rank\" : \"10\",\n" +
-                        "    \"LocalizedName\" : \"Moscow\",\n" +
-                        "    \"Country\" : \"Russia\",\n" +
-                        "    \"ID\" : \"RU\",\n" +
-                        "}";
-                break;
-            default:
-                throw new IllegalStateException("Unexpected value: " + period);
-        }
         return weatherResponse;
+    }
+
+    @Override
+    public List<Weather> getSavedToDBWeather() {
+        return dataBaseRepository.getSavedToDBWeather();
     }
 
     public String detectCityKey(String selectedCity, Period oneDay) throws IOException {
@@ -104,13 +118,13 @@ public class AccuweatherModel implements WeatherModel {
                 .addPathSegment(AUTOCOMPLETE)
                 .addQueryParameter(API_KEY_QUERY_PARAM, API_KEY)
                 .addQueryParameter("q", selectedCity)
-                        .build();
+                .build();
 
         Request request = new Request.Builder()
                 .url(httpUrl)
                 .get()
                 .addHeader("accept", "application/json")
-                 .build();
+                .build();
 
         Response response  = okHttpClient.newCall(request).execute();
         String responseCity = response.body().string();
@@ -119,5 +133,4 @@ public class AccuweatherModel implements WeatherModel {
         String cityKey = objectMapper.readTree(responseCity).get(0).at("/Key").asText();
         return responseCity;
     }
-
 }
