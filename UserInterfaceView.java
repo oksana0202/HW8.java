@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.Scanner;
 
 public class UserInterfaceView {
-    private Controller controller = new Controller();
+    private HW7.Controller controller = new Controller();
 
     public void runInterface(){
         Scanner scanner = new Scanner(System.in);
@@ -14,7 +14,7 @@ public class UserInterfaceView {
             String city = scanner.nextLine();
 
             System.out.println("Введите 1 для получения погоды на сегодня; 5 - для прогноза на 5 дней; " +
-                    "Для выхода введите 0");
+                    "Введите2 для получения данных из базы. Для выхода введите 0");
 
             String command = scanner.nextLine();
 
